@@ -31,7 +31,7 @@ docker compose up -d
 This starts all the Airflow services in detached mode (-d), allowing them to run in the background.
 
 # 2- PostgreSQL Schema — OLTP invoicing
-All the files related to OLTP invoicing is present on invoicing-db-design/*.
+All the files related to OLTP invoicing is present on path **invoicing-db-design/**.
 
 ![ERD for Invoicing](oltp-invoicing.png "ERD for Invoicing")
 ```sql
