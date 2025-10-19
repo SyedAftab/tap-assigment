@@ -170,8 +170,8 @@ from datetime import datetime
 # ===============================
 DB_CONFIG = {
     "dbname": "invoicing",
-    "user": "syed",
-    "password": "$yo01d2zedgloef",
+    "user": "{Your User}",
+    "password": "{Your Password}",
     "host": "tap-assignments.cqncol5yfsyy.eu-west-1.rds.amazonaws.com",
     "port": "5432"
 }
