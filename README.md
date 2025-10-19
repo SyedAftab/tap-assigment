@@ -242,6 +242,5 @@ DELETE FROM products WHERE product_id = 1;
 | **Normalized Design**     | Avoids duplication between invoices and products       |
 | **Referential Integrity** | Cascades deletions from invoices → items → payments    |
 | **Payment History**       | Allows multiple payments per invoice                   |
-| **Auto-computed Columns** | Ensures accuracy for net/gross values                  |
 | **Timestamps & Indexes**  | Support fast queries for reporting and recent invoices |
 | **Update triggers**       | Automatically refresh timestamps on updates            |
