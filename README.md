@@ -1,2 +1,247 @@
-# tap-assigment
-This is the data pipeline assigment
+# 1- Environment Setup
+## Steps to Run Airflow in Docker:
+Install Docker and Docker Compose: Ensure you have Docker Desktop (for Windows/macOS) or Docker Engine and Docker Compose installed on your system.
+### Create a Project Directory: 
+```bash
+mkdir airflow-docker && cd airflow-docker
+```
+
+### Prepare Directories for Airflow Components.
+```bash
+mkdir -p ./dags ./logs ./plugins
+```
+These directories will be mounted into Airflow containers for DAGs, logs, and custom plugins. Create an Environment File (.env).
+```bash
+echo -e "AIRFLOW_UID=$(id -u)" > .env
+```
+This sets the AIRFLOW_UID to host user ID, ensuring correct file permissions within the Docker containers. Fetch the Official docker-compose.yaml.
+```bash
+curl -LfO 'https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml'
+```
+This downloads the official Docker Compose file, which defines the Airflow services (webserver, scheduler, worker, database, etc.). Initialize Airflow.
+```bash
+docker compose up airflow-init
+```
+This command performs database migrations and creates the initial Airflow user. The default credentials are typically airflow/airflow. Launch Airflow Services.
+```bash
+docker compose up -d
+```
+![Docker Engine snapshot](docker-airflow.png "Docker Engine snapshot")
+
+This starts all the Airflow services in detached mode (-d), allowing them to run in the background.
+
+# 2- PostgreSQL Schema — OLTP invoicing
+![ERD for Invoicing](oltp-invoicing.png "ERD for Invoicing")
+```sql
+-- ========================================
+-- 1-Table: Clients
+-- ========================================
+CREATE TABLE clients (
+    client_id SERIAL PRIMARY KEY,
+    client_name VARCHAR(255) NOT NULL,
+    client_address TEXT NOT NULL,
+    client_tax_id VARCHAR(30) UNIQUE NOT NULL,
+    iban VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 2-Table: Sellers
+-- ========================================
+CREATE TABLE sellers (
+    seller_id SERIAL PRIMARY KEY,
+    seller_name VARCHAR(255) NOT NULL,
+    seller_address TEXT NOT NULL,
+    seller_tax_id VARCHAR(30) UNIQUE NOT NULL,
+    iban VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 3-Table: Products
+-- ========================================
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    product_description TEXT,
+    unit_price NUMERIC(12,2) NOT NULL,
+    vat_rate NUMERIC(5,2) DEFAULT 10.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 4-Table: Invoices
+-- ========================================
+CREATE TABLE invoices (
+    invoice_id SERIAL PRIMARY KEY,
+    invoice_no VARCHAR(50) UNIQUE NOT NULL,
+    invoice_date DATE NOT NULL,
+    seller_id INT NOT NULL REFERENCES sellers(seller_id) ON DELETE CASCADE,
+    client_id INT NOT NULL REFERENCES clients(client_id) ON DELETE CASCADE,
+    total_net_worth NUMERIC(14,2) DEFAULT 0.00,
+    total_vat NUMERIC(14,2) DEFAULT 0.00,
+    total_gross_worth NUMERIC(14,2) DEFAULT 0.00,
+    status VARCHAR(20) DEFAULT 'UNPAID',  -- UNPAID | PARTIALLY_PAID | PAID
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 5-Table: Invoice Items (Many-to-One → Invoices, Many-to-One → Products)
+-- ========================================
+CREATE TABLE invoice_items (
+    item_id SERIAL PRIMARY KEY,
+    invoice_id INT NOT NULL REFERENCES invoices(invoice_id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
+    item_qty NUMERIC(10,2) NOT NULL CHECK (item_qty > 0),
+    item_net_price NUMERIC(12,2) NOT NULL,
+    item_net_worth NUMERIC(12,2) GENERATED ALWAYS AS (item_qty * item_net_price) STORED,
+    item_vat_rate NUMERIC(5,2) DEFAULT 10.00,
+    item_gross_worth NUMERIC(12,2) GENERATED ALWAYS AS (item_net_worth + (item_net_worth * item_vat_rate / 100)) STORED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 6-Table: Payments (Many-to-One → Invoices)
+-- ========================================
+CREATE TABLE payments (
+    payment_id SERIAL PRIMARY KEY,
+    invoice_id INT NOT NULL REFERENCES invoices(invoice_id) ON DELETE CASCADE,
+    payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    payment_method VARCHAR(50) CHECK (payment_method IN ('CASH', 'BANK_TRANSFER', 'CREDIT_CARD', 'CHECK', 'ONLINE')),
+    payment_reference VARCHAR(100),
+    amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 7-Indexes
+-- ========================================
+CREATE INDEX idx_invoices_date ON invoices(invoice_date);
+CREATE INDEX idx_invoice_items_invoice_id ON invoice_items(invoice_id);
+CREATE INDEX idx_payments_invoice_id ON payments(invoice_id);
+CREATE INDEX idx_products_name ON products(product_name);
+
+-- ========================================
+-- 8-Trigger for auto-update timestamps
+-- ========================================
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_clients
+BEFORE UPDATE ON clients
+FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER trg_update_sellers
+BEFORE UPDATE ON sellers
+FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER trg_update_products
+BEFORE UPDATE ON products
+FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER trg_update_invoices
+BEFORE UPDATE ON invoices
+FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+
+```
+### CRUD Operations
+
+#### Create
+
+```sql
+-- Create Seller
+INSERT INTO sellers (seller_name, seller_address, seller_tax_id, iban)
+VALUES ('Whitaker, Gray and Green', '39588 Thomas Brook Suite 147 Sullivanshire, NH 40856', '987-82-9377', 'GB50UPCM86772611595760');
+
+-- Create Client
+INSERT INTO clients (client_name, client_address, client_tax_id, iban)
+VALUES ('Davidson, Smith and Gill', '3577 Michael Fields Marquezstad, IL 48510', '967-95-5221', 'GB50UPCM86772611595760');
+
+-- Add Products
+INSERT INTO products (product_name, product_description, unit_price, vat_rate)
+VALUES 
+('36" Round Marble Dining Table', 'Marble Lapis Mosaic Floral Inlay', 1490.00, 10),
+('12" Marble Side Coffee Table', 'Lapis Peacock Floral Inlay', 248.78, 10),
+('6x3 Oval Marble Dining Table', 'Marquetry White Top Decor', 7193.76, 10);
+
+-- Create Invoice
+INSERT INTO invoices (invoice_no, invoice_date, seller_id, client_id, total_net_worth, total_vat, total_gross_worth)
+VALUES ('15686725', '2021-11-03', 1, 1, 85850.39, 8585.04, 94435.43);
+
+-- Add Invoice Items
+INSERT INTO invoice_items (invoice_id, product_id, item_qty, item_net_price, item_vat_rate)
+VALUES
+(1, 1, 1.00, 1490.00, 10),
+(1, 2, 3.00, 248.78, 10),
+(1, 3, 2.00, 7193.76, 10);
+
+-- Add Payment
+INSERT INTO payments (invoice_id, payment_method, payment_reference, amount, remarks)
+VALUES (1, 'BANK_TRANSFER', 'TXN-20211103-889', 50000.00, 'Partial payment received');
+
+```
+#### Read
+```sql
+-- Fetch full invoice with products and payment details
+SELECT
+    i.invoice_no,
+    i.invoice_date,
+    s.seller_name,
+    c.client_name,
+    p.product_name,
+    ii.item_qty,
+    ii.item_net_price,
+    ii.item_gross_worth,
+    pay.amount AS payment_amount,
+    pay.payment_method,
+    pay.payment_date
+FROM invoices i
+JOIN sellers s ON s.seller_id = i.seller_id
+JOIN clients c ON c.client_id = i.client_id
+JOIN invoice_items ii ON ii.invoice_id = i.invoice_id
+JOIN products p ON p.product_id = ii.product_id
+LEFT JOIN payments pay ON pay.invoice_id = i.invoice_id
+WHERE i.invoice_no = '15686725';
+
+```
+#### Update
+```sql
+-- Update invoice totals after payment
+UPDATE invoices
+SET total_gross_worth = 94435.43,
+    status = 'PARTIALLY_PAID'
+WHERE invoice_no = '15686725';
+
+-- Update product price
+UPDATE products
+SET unit_price = 1550.00
+WHERE product_name = '36" Round Marble Dining Table';
+```
+#### Delete
+```sql
+-- Delete an invoice (cascades to items and payments)
+DELETE FROM invoices WHERE invoice_no = '15686725';
+
+-- Delete a product (will fail if referenced in invoice_items)
+DELETE FROM products WHERE product_id = 1;
+```
+#### Design Highlights
+| Feature                   | Description                                            |
+| ------------------------- | ------------------------------------------------------ |
+| **Normalized Design**     | Avoids duplication between invoices and products       |
+| **Referential Integrity** | Cascades deletions from invoices → items → payments    |
+| **Payment History**       | Allows multiple payments per invoice                   |
+| **Auto-computed Columns** | Ensures accuracy for net/gross values                  |
+| **Timestamps & Indexes**  | Support fast queries for reporting and recent invoices |
+| **Update triggers**       | Automatically refresh timestamps on updates            |

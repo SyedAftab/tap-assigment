@@ -1,0 +1,77 @@
+//https://dbdiagram.io
+Table "clients" {
+  "client_id" SERIAL [pk, increment]
+  "client_name" VARCHAR(255) [not null]
+  "client_address" TEXT [not null]
+  "client_tax_id" VARCHAR(30) [unique, not null]
+  "iban" VARCHAR(50)
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "sellers" {
+  "seller_id" SERIAL [pk, increment]
+  "seller_name" VARCHAR(255) [not null]
+  "seller_address" TEXT [not null]
+  "seller_tax_id" VARCHAR(30) [unique, not null]
+  "iban" VARCHAR(50)
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "products" {
+  "product_id" SERIAL [pk, increment]
+  "product_name" VARCHAR(255) [not null]
+  "product_description" TEXT
+  "unit_price" NUMERIC(12,2) [not null]
+  "vat_rate" NUMERIC(5,2) [default: 10.00]
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "invoices" {
+  "invoice_id" SERIAL [pk, increment]
+  "invoice_no" VARCHAR(50) [unique, not null]
+  "invoice_date" DATE [not null]
+  "seller_id" INT [not null]
+  "client_id" INT [not null]
+  "total_net_worth" NUMERIC(14,2) [default: 0.00]
+  "total_vat" NUMERIC(14,2) [default: 0.00]
+  "total_gross_worth" NUMERIC(14,2) [default: 0.00]
+  "status" VARCHAR(20) [default: 'UNPAID']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "invoice_items" {
+  "item_id" SERIAL [pk, increment]
+  "invoice_id" INT [not null]
+  "product_id" INT [not null]
+  "item_qty" NUMERIC(10,2) [not null]
+  "item_net_price" NUMERIC(12,2) [not null]
+  "item_net_worth" NUMERIC(12,2)
+  "item_vat_rate" NUMERIC(5,2) [default: 10.00]
+  "item_gross_worth" NUMERIC(12,2)
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "payments" {
+  "payment_id" SERIAL [pk, increment]
+  "invoice_id" INT [not null]
+  "payment_date" DATE [not null, default: `CURRENT_DATE`]
+  "payment_method" VARCHAR(50)
+  "payment_reference" VARCHAR(100)
+  "amount" NUMERIC(14,2) [not null]
+  "remarks" TEXT
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Ref:"sellers"."seller_id" < "invoices"."seller_id" [delete: cascade]
+
+Ref:"clients"."client_id" < "invoices"."client_id" [delete: cascade]
+
+Ref:"invoices"."invoice_id" < "invoice_items"."invoice_id" [delete: cascade]
+
+Ref:"products"."product_id" < "invoice_items"."product_id" [delete: restrict]
+
+Ref:"invoices"."invoice_id" < "payments"."invoice_id" [delete: cascade]
