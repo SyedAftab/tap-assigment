@@ -157,7 +157,10 @@ FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 ```
 ### Populate tables from sample data
 
-Sample data file (invoicing-db-design/ivoicing-data.txt) extrated from the provided link https://huggingface.co/datasets/katanaml-org/invoices-donut-data-v1 execute the below python file it will populate the data in the tables.
+Sample data file (invoicing-db-design/ivoicing-data.txt) extrated from the provided link https://huggingface.co/datasets/katanaml-org/invoices-donut-data-v1 execute the below python script it will populate the data in the tables.
+```bash
+python .\insert_invoices.py
+```
 # insert_invoices.py
 ```python
 import psycopg2
