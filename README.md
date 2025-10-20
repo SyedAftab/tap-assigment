@@ -31,6 +31,8 @@ docker compose up -d
 This starts all the Airflow services in detached mode (-d), allowing them to run in the background.
 
 # 2- PostgreSQL Schema — OLTP invoicing
+All the files related to OLTP invoicing is present on path **invoicing-db-design/**.
+
 ![ERD for Invoicing](oltp-invoicing.png "ERD for Invoicing")
 ```sql
 -- ========================================
@@ -157,7 +159,10 @@ FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 ```
 ### Populate tables from sample data
 
-Sample data file (invoicing-db-design/ivoicing-data.txt) extrated from the provided link https://huggingface.co/datasets/katanaml-org/invoices-donut-data-v1 execute the below python file it will populate the data in the tables.
+Sample data file (invoicing-db-design/ivoicing-data.txt) extrated from the provided link https://huggingface.co/datasets/katanaml-org/invoices-donut-data-v1 execute the below python script it will populate the data in the tables.
+```bash
+python .\insert_invoices.py
+```
 # insert_invoices.py
 ```python
 import psycopg2
@@ -170,8 +175,8 @@ from datetime import datetime
 # ===============================
 DB_CONFIG = {
     "dbname": "invoicing",
-    "user": "syed",
-    "password": "$yo01d2zedgloef",
+    "user": "{Your User}",
+    "password": "{Your Password}",
     "host": "tap-assignments.cqncol5yfsyy.eu-west-1.rds.amazonaws.com",
     "port": "5432"
 }
