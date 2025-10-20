@@ -45,7 +45,7 @@ In the **Airflow UI → Admin → Connections**, create:
 |------------|--------------|--------------|------------------|--------|-----------|-------|--------------|
 | `olap_pg` | Postgres     | your-host    | invoicing_olap   | user   | pass      | 5432  | Target OLAP |
 
-Ensure both connections are tested successfully.
+Ensure connections are tested successfully.
 
 #### 5️.Deploy the DAG
 Copy the `invoice_elt_olap.py` file into Airflow’s DAGs directory:
@@ -99,3 +99,4 @@ Update a client or product record in OLTP and re-trigger the DAG to confirm it u
 
 **Author:** Syed Aftab Alam 
 **Purpose:** Real-time incremental load from transactional PostgreSQL (OLTP) → analytical PostgreSQL (OLAP) using Airflow.
+
