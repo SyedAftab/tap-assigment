@@ -8,8 +8,6 @@ client_tax_id=EXCLUDED.client_tax_id, iban=EXCLUDED.iban, updated_at=EXCLUDED.up
 
 UPDATE invoicing_olap.etl_watermarks SET last_loaded_ts = NOW() WHERE stream_name='clients';
 
--- Repeat same pattern for sellers and products
-
 -- Upsert sellers
 WITH w AS (SELECT last_loaded_ts FROM invoicing_olap.etl_watermarks WHERE stream_name='sellers')
 INSERT INTO invoicing_olap.dim_seller (seller_id, seller_name, seller_addr, seller_tax_id, iban, updated_at)
