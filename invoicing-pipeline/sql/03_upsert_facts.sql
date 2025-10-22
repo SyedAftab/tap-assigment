@@ -44,14 +44,14 @@ WITH w AS (
 ),
 src AS (
   SELECT ii.item_id, ii.invoice_id, ii.product_id,
-         ii.quantity, ii.net_price, ii.net_worth, ii.vat_rate, ii.gross_worth, ii.created_at
+         ii.item_qty, ii.item_net_price, ii.item_net_worth, ii.item_vat_rate, ii.item_gross_worth, ii.created_at
   FROM invoice_items ii, w
   WHERE ii.created_at >= w.last_loaded_ts
 ),
 keys AS (
   SELECT s.item_id, s.invoice_id,
          dp.product_key,
-         s.quantity, s.net_price, s.net_worth, s.vat_rate, s.gross_worth, s.created_at
+         s.item_qty as quantity, s.item_net_price as net_price, s.item_net_worth as net_worth, s.item_vat_rate as vat_rate, s.item_gross_worth as gross_worth, s.created_at
   FROM src s
   JOIN invoicing_olap.dim_product dp ON dp.product_id = s.product_id
 )
@@ -74,14 +74,14 @@ WITH w AS (
 ),
 src AS (
   SELECT p.payment_id, p.invoice_id, p.payment_date,
-         p.amount, p.method, p.reference, p.created_at
+         p.amount, p.payment_method, p.payment_reference, p.created_at
   FROM payments p, w
   WHERE p.created_at >= w.last_loaded_ts
 ),
 keys AS (
   SELECT s.payment_id, s.invoice_id,
          invoicing_olap.ensure_date_key(s.payment_date) AS payment_date_key,
-         s.amount, s.method, s.reference, s.created_at
+         s.amount, s.payment_method as method, s.payment_reference as reference, s.created_at
   FROM src s
 )
 INSERT INTO invoicing_olap.fact_payment (

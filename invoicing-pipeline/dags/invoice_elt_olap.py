@@ -12,7 +12,7 @@ default_args = {
 with DAG(
     dag_id='invoice_elt_olap',
     start_date=datetime(2025, 10, 18),
-    schedule='*/5 * * * *',  # corrected: 'schedule' → 'schedule_interval'
+    schedule='*/5 * * * *',
     catchup=False,
     default_args=default_args,
     tags=['invoicing', 'oltp->olap']
@@ -26,7 +26,8 @@ with DAG(
             sql = f.read()
         hook.run(sql)
 
-    dim = run_sql('e:\data-science\airflow-docker\dags\sql\02_upsert_dimensions.sql')
-    fact = run_sql('e:\data-science\airflow-docker\dags\sql\sql\03_upsert_facts.sql')
+    dim = run_sql('/opt/airflow/dags/sql/02_upsert_dimensions.sql')
+    fact = run_sql('/opt/airflow/dags/sql/03_upsert_facts.sql')
+    
 
     dim >> fact

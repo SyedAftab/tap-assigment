@@ -18,7 +18,7 @@ CREATE OR REPLACE FUNCTION ensure_date_key(d DATE)
 RETURNS INT AS $$
 DECLARE k INT := (EXTRACT(YEAR FROM d)::INT * 10000 + EXTRACT(MONTH FROM d)::INT * 100 + EXTRACT(DAY FROM d)::INT);
 BEGIN
-  INSERT INTO dim_date(date_key,"date",year,quarter,month,month_name,day,day_of_week,day_name,week_of_year)
+  INSERT INTO invoicing_olap.dim_date(date_key,"date",year,quarter,month,month_name,day,day_of_week,day_name,week_of_year)
   VALUES (k,d,EXTRACT(YEAR FROM d)::INT,EXTRACT(QUARTER FROM d)::INT,EXTRACT(MONTH FROM d)::INT,TO_CHAR(d,'Mon'),EXTRACT(DAY FROM d)::INT,EXTRACT(DOW FROM d)::INT+1,TO_CHAR(d,'Dy'),EXTRACT(WEEK FROM d)::INT)
   ON CONFLICT (date_key) DO NOTHING;
   RETURN k;
