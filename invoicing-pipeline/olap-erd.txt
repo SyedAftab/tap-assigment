@@ -1,0 +1,94 @@
+Table "etl_watermarks" {
+  "stream_name" TEXT [pk]
+  "last_loaded_ts" TIMESTAMP [not null]
+}
+
+Table "dim_date" {
+  "date_key" INT [pk]
+  "date" DATE [unique, not null]
+  "year" INT
+  "quarter" INT
+  "month" INT
+  "month_name" TEXT
+  "day" INT
+  "day_of_week" INT
+  "day_name" TEXT
+  "week_of_year" INT
+}
+
+Table "dim_client" {
+  "client_key" BIGSERIAL [pk, increment]
+  "client_id" INT [unique, not null]
+  "client_name" TEXT [not null]
+  "client_addr" TEXT
+  "client_tax_id" TEXT
+  "iban" TEXT
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "dim_seller" {
+  "seller_key" BIGSERIAL [pk, increment]
+  "seller_id" INT [unique, not null]
+  "seller_name" TEXT [not null]
+  "seller_addr" TEXT
+  "seller_tax_id" TEXT
+  "iban" TEXT
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "dim_product" {
+  "product_key" BIGSERIAL [pk, increment]
+  "product_id" INT [unique, not null]
+  "product_name" TEXT [not null]
+  "product_desc" TEXT
+  "unit_price" NUMERIC(12,2)
+  "vat_rate" NUMERIC(5,2)
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "fact_invoice" {
+  "invoice_key" BIGSERIAL [pk, increment]
+  "invoice_id" INT [unique, not null]
+  "invoice_no" TEXT [not null]
+  "invoice_date_key" INT
+  "seller_key" BIGINT
+  "client_key" BIGINT
+  "total_net" NUMERIC(14,2)
+  "total_vat" NUMERIC(14,2)
+  "total_gross" NUMERIC(14,2)
+  "status" TEXT
+  "updated_at" TIMESTAMP
+}
+
+Table "fact_invoice_item" {
+  "invoice_item_key" BIGSERIAL [pk, increment]
+  "invoice_id" INT
+  "product_key" BIGINT
+  "qty" NUMERIC(10,2)
+  "net_price" NUMERIC(12,2)
+  "net_worth" NUMERIC(12,2)
+  "vat_rate" NUMERIC(5,2)
+  "gross_worth" NUMERIC(12,2)
+  "created_at" TIMESTAMP
+}
+
+Table "fact_payment" {
+  "payment_key" BIGSERIAL [pk, increment]
+  "invoice_id" INT
+  "payment_date_key" INT
+  "amount" NUMERIC(14,2)
+  "method" TEXT
+  "reference" TEXT
+  "created_at" TIMESTAMP
+}
+
+Ref:"dim_date"."date_key" < "fact_invoice"."invoice_date_key"
+
+Ref:"dim_seller"."seller_key" < "fact_invoice"."seller_key"
+
+Ref:"dim_client"."client_key" < "fact_invoice"."client_key"
+
+Ref:"dim_product"."product_key" < "fact_invoice_item"."product_key"
+
+Ref:"dim_date"."date_key" < "fact_payment"."payment_date_key"
+
