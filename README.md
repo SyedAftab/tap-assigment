@@ -433,32 +433,28 @@ project_root/
 - **PostgreSQL** 14+.
 - **Apache Airflow** 2.7+ with the **Postgres Provider** installed.
 
-#### 2️.Create Schema
-Create PostgreSQL schema:
-```sql
-CREATE SCHEMA invoicing_olap; -- OLAP target
-```
-
-#### 3️.Run Initial Schema Scripts
+#### 2.Run Initial Schema Scripts
 Execute these in order:
 ```bash
-psql -d invoicing_olap -f sql/01_create_olap_schema.sql
-psql -d invoicing_olap -f sql/04_init_watermarks.sql
+psql -d invoicing -f sql/01_create_olap_schema.sql
+psql -d invoicing -f sql/04_init_watermarks.sql
 ```
+![ERD for OLAP Invoicing](olap-invoicing.png "ERD for OLAP Invoicing")
 
-#### 4️.Airflow Connection Setup
+#### 3.Airflow Connection Setup
 In the **Airflow UI → Admin → Connections**, create:
 
 | Conn Id   | Type        | Host        | Schema          | Login | Password | Port | Description |
 |------------|--------------|--------------|------------------|--------|-----------|-------|--------------|
-| `olap_pg` | Postgres     | your-host    | invoicing_olap   | user   | pass      | 5432  | Target OLAP |
+| `olap_pg` | Postgres     | host    | invoicing_olap   | user   | pass      | 5432  | Target OLAP |
 
 Ensure connections are tested successfully.
 
-#### 5️.Deploy the DAG
+#### 4.Deploy the DAG
 Copy the `invoice_elt_olap.py` file into Airflow’s DAGs directory:
 ```bash
 cp dags/invoice_elt_olap.py /airflow/dags/
+cp sql/ -r /airflow/dags/sql
 ```
 Then restart Airflow:
 ```bash
@@ -473,7 +469,9 @@ docker compose up -d
    - Append new **invoice_items** and **payments**.
 3. After first successful run, it updates `etl_watermarks` to maintain incremental sync.
 
-### Testing Locally
+![OLAP Invoicing DAG](olap-invoicing-dag.png "OLAP Invoicing DAG")
+
+### Testing
 
 #### 1️.Run OLTP Inserts
 ```sql
@@ -482,7 +480,7 @@ VALUES ('Demo Client', 'Test Address', 'TAX-001', 'IBAN-DEMO');
 ```
 #### 2️.Trigger the DAG
 ```bash
-airflow dags trigger invoice_elt_olap
+dag will run after every five minutes
 ```
 
 #### 3️.Verify Results
@@ -492,12 +490,8 @@ SELECT * FROM invoicing_olap.dim_client ORDER BY updated_at DESC;
 SELECT * FROM invoicing_olap.fact_invoice LIMIT 5;
 ```
 
-#### 4️.Force Incremental Test
-Update a client or product record in OLTP and re-trigger the DAG to confirm it updates in OLAP.
-
-
 ### Maintenance Tips
-- Periodically vacuum/analyze OLAP tables for performance.
+- Periodically analyze OLAP tables for performance.
 - Consider archiving old watermarks if ETL runs over a year.
 - Add more granular logging by wrapping SQL tasks with Airflow XCom pushes.
 
