@@ -7,7 +7,7 @@ WITH w AS (
 src AS (
   SELECT i.invoice_id, i.invoice_no, i.invoice_date, i.seller_id, i.client_id,
          i.total_net_worth, i.total_vat, i.total_gross_worth, i.status, i.updated_at
-  FROM invoicing.invoices i, w
+  FROM invoices i, w
   WHERE i.updated_at >= w.last_loaded_ts
 ),
 keys AS (
@@ -43,13 +43,13 @@ WITH w AS (
   SELECT last_loaded_ts FROM invoicing_olap.etl_watermarks WHERE stream_name='invoice_items'
 ),
 src AS (
-  SELECT ii.invoice_item_id, ii.invoice_id, ii.product_id,
+  SELECT ii.item_id, ii.invoice_id, ii.product_id,
          ii.quantity, ii.net_price, ii.net_worth, ii.vat_rate, ii.gross_worth, ii.created_at
-  FROM invoicing.invoice_items ii, w
+  FROM invoice_items ii, w
   WHERE ii.created_at >= w.last_loaded_ts
 ),
 keys AS (
-  SELECT s.invoice_item_id, s.invoice_id,
+  SELECT s.item_id, s.invoice_id,
          dp.product_key,
          s.quantity, s.net_price, s.net_worth, s.vat_rate, s.gross_worth, s.created_at
   FROM src s
@@ -75,7 +75,7 @@ WITH w AS (
 src AS (
   SELECT p.payment_id, p.invoice_id, p.payment_date,
          p.amount, p.method, p.reference, p.created_at
-  FROM invoicing.payments p, w
+  FROM payments p, w
   WHERE p.created_at >= w.last_loaded_ts
 ),
 keys AS (
